@@ -9,7 +9,7 @@ const Pad = require("./models/Pad")
 const Provider = require("./models/Provider")
 
 async function fetchUpcomingLaunches() {
-    return await fetch(process.env.UPCOMING_LAUNCHES_LINK).then((res) => res.json())
+    return await fetch(process.env.LAUNCHES_LINK).then((res) => res.json())
 }
 
 async function insertUpcomingLaunches(launches) {
