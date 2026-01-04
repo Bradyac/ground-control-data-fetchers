@@ -24,6 +24,18 @@ const ArticleSchema = Schema({
     updated_date: {
         type: String,
     },
+    featured: {
+        type: Boolean,
+        default: false,
+    },
+    launches: {
+        type: Array,
+        default: [],
+    },
+    events: {
+        type: Array,
+        default: [],
+    },
 })
 
 module.exports = mongoose.model("Articles", ArticleSchema)

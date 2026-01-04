@@ -13,6 +13,8 @@ async function fetchUpcomingLaunches() {
 }
 
 async function insertUpcomingLaunches(launches) {
+    console.log(`Processing ${launches.length} upcoming launches...`)
+
     for (var i = 0; i < launches.length; i++) {
         const launch = launches[i]
 
@@ -64,6 +66,9 @@ async function insertUpcomingLaunches(launches) {
         })
         await Provider.updateOne({ _id: provider.id }, provider, { upsert: true })
 
+        // Get video URL from vidURLs array if available
+        const watchUrl = launch.vidURLs && launch.vidURLs.length > 0 ? launch.vidURLs[0].url : null
+
         const upcomingLaunch = new Launch({
             _id: launch.id,
             name: launch.name,
@@ -71,7 +76,7 @@ async function insertUpcomingLaunches(launches) {
             date: launch.net,
             slug: launch.slug,
             image_url: launch.image,
-            watch_url: launch.vidURLs[0] ? launch.vidURLs[0].url : null,
+            watch_url: watchUrl,
             rocket: rocket._id,
             mission: mission ? mission._id : null,
             pad: pad._id,
@@ -79,6 +84,7 @@ async function insertUpcomingLaunches(launches) {
         })
         await Launch.updateOne({ _id: upcomingLaunch.id }, upcomingLaunch, { upsert: true })
     }
+    console.log("Launches sync complete!")
     process.exit(0)
 }
 
