@@ -4,39 +4,42 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Ground Control Fetcher is a Node.js utility that fetches space launch and news article data from external APIs and stores it in MongoDB Atlas. It's a one-time sync utility, not a persistent server.
+Ground Control Fetcher syncs space launch and news data from external APIs into MongoDB Atlas. It's a one-time sync utility (not a persistent server) designed to run periodically.
 
 ## Commands
 
-- `npm start` - Run the launch data fetcher (`node fetch-launches.js`)
-- `npm run dev` - Run with nodemon for development (auto-reload on changes)
-
-Note: Scripts execute once and exit via `process.exit(0)` after completion.
+```bash
+npm run sync       # Sync both launches and articles
+npm run launches   # Sync only launches
+npm run articles   # Sync only articles
+npm run dev        # Run sync with nodemon (auto-reload)
+```
 
 ## Architecture
 
 ### Entry Points
-- **fetch-launches.js** - Main script that fetches upcoming space launches from The Space Devs API (ll.thespacedevs.com) and upserts data across 5 related models
-- **fetch-articles.js** - Alternative script for fetching space news articles
+- **sync.js** - Unified script that runs both fetchers with a summary
+- **fetch-launches.js** - Fetches upcoming launches from Launch Library 2 API
+- **fetch-articles.js** - Fetches space news from Spaceflight News API v4
+
+Each fetcher exports its sync function and can run standalone or be imported by sync.js.
+
+### Database (`db_connection.js`)
+- Exports `connectDB()` and `disconnectDB()` for explicit connection management
+- Scripts wait for connection before running, disconnect cleanly on exit
 
 ### Data Models (`/models/`)
-All models use Mongoose schemas with MongoDB Atlas:
-- **Launch.js** - Space launch events (references Rocket, Mission, Pad, Provider)
-- **Rocket.js** - Launch vehicles
-- **Mission.js** - Mission metadata (optional in launches)
-- **Pad.js** - Launch pad/facility locations
-- **Provider.js** - Launch service providers
-- **Article.js** - Space news articles
+- **Launch.js** - References Rocket, Mission, Pad, Provider
+- **Rocket.js**, **Mission.js**, **Pad.js**, **Provider.js** - Launch-related entities
+- **Article.js** - News articles with optional launch/event links
 
-### Database Pattern
-- Uses upsert operations (`updateOne({_id}, data, {upsert: true})`) for idempotent inserts
-- Related entities are upserted before the main Launch document
-- Connection established in `db_connection.js` using environment variables
+### Pattern
+All fetchers use upsert operations (`updateOne` with `{ upsert: true }`) for idempotent inserts.
 
 ## External APIs
 
-- **Launch Library 2 (v2.2.0)** - `ll.thespacedevs.com` - Space launch data (15 req/hour limit)
-- **Spaceflight News API (v4)** - `api.spaceflightnewsapi.net` - Space news articles
+- **Launch Library 2 (v2.2.0)** - `ll.thespacedevs.com` - 15 req/hour limit
+- **Spaceflight News API (v4)** - `api.spaceflightnewsapi.net`
 
 ## Environment Setup
 
@@ -44,3 +47,7 @@ Requires `.env` file with:
 - `DB_CONNECTION_STRING` - MongoDB Atlas connection string
 - `LAUNCHES_LINK` - Launch Library 2 API endpoint
 - `ARTICLES_LINK` - Spaceflight News API v4 endpoint
+
+## Requirements
+
+- Node.js 18+ (uses native fetch)

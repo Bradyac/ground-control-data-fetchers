@@ -1,7 +1,5 @@
 require("dotenv/config")
-require("./db_connection")
-require("mongoose")
-const fetch = require("node-fetch")
+const { connectDB, disconnectDB } = require("./db_connection")
 const Launch = require("./models/Launch")
 const Rocket = require("./models/Rocket")
 const Mission = require("./models/Mission")
@@ -9,83 +7,124 @@ const Pad = require("./models/Pad")
 const Provider = require("./models/Provider")
 
 async function fetchUpcomingLaunches() {
-    return await fetch(process.env.LAUNCHES_LINK).then((res) => res.json())
+    if (!process.env.LAUNCHES_LINK) {
+        throw new Error("Missing LAUNCHES_LINK environment variable")
+    }
+
+    const response = await fetch(process.env.LAUNCHES_LINK)
+
+    if (!response.ok) {
+        throw new Error(`API request failed: ${response.status} ${response.statusText}`)
+    }
+
+    return response.json()
 }
 
-async function insertUpcomingLaunches(launches) {
+async function syncLaunches() {
+    const data = await fetchUpcomingLaunches()
+    const launches = data.results
+
     console.log(`Processing ${launches.length} upcoming launches...`)
 
-    for (var i = 0; i < launches.length; i++) {
-        const launch = launches[i]
+    for (const launch of launches) {
+        // Rocket (Ex. Falcon 9)
+        const rocketData = launch.rocket.configuration
+        await Rocket.updateOne(
+            { _id: rocketData.id },
+            {
+                _id: rocketData.id,
+                name: rocketData.name,
+                description: rocketData.description,
+                info_url: rocketData.info_url,
+                wiki_url: rocketData.wiki_url,
+            },
+            { upsert: true }
+        )
 
-        // launch rocket (Ex. Falcon 9)
-        const rocketPath = launch.rocket.configuration
-        const rocket = new Rocket({
-            _id: rocketPath.id,
-            name: rocketPath.name,
-            description: rocketPath.description,
-            info_url: rocketPath.info_url,
-            wiki_url: rocketPath.wiki_url,
-        })
-        await Rocket.updateOne({ _id: rocket.id }, rocket, { upsert: true })
-
-        // launch mission (sometimes null)
-        var mission = null
-        const missionPath = launch.mission
-        if (missionPath) {
-            mission = new Mission({
-                _id: missionPath.id,
-                name: missionPath.name,
-                type: missionPath.type,
-                description: missionPath.description,
-            })
-            await Mission.updateOne({ _id: mission.id }, mission, { upsert: true })
+        // Mission (sometimes null)
+        let missionId = null
+        if (launch.mission) {
+            missionId = launch.mission.id
+            await Mission.updateOne(
+                { _id: launch.mission.id },
+                {
+                    _id: launch.mission.id,
+                    name: launch.mission.name,
+                    type: launch.mission.type,
+                    description: launch.mission.description,
+                },
+                { upsert: true }
+            )
         }
 
-        // launch pad (Ex. Boca Chica)
-        const padPath = launch.pad
-        const pad = new Pad({
-            _id: padPath.id,
-            location_name: padPath.name,
-            wiki_url: padPath.wiki_url,
-            map_url: padPath.map_url,
-            map_image_url: padPath.map_image,
-        })
-        await Pad.updateOne({ _id: pad.id }, pad, { upsert: true })
+        // Pad (Ex. Boca Chica)
+        const padData = launch.pad
+        await Pad.updateOne(
+            { _id: padData.id },
+            {
+                _id: padData.id,
+                location_name: padData.name,
+                wiki_url: padData.wiki_url,
+                map_url: padData.map_url,
+                map_image_url: padData.map_image,
+            },
+            { upsert: true }
+        )
 
-        // launch provider (Ex. SpaceX)
-        const providerPath = launch.launch_service_provider
-        const provider = new Provider({
-            _id: providerPath.id,
-            name: providerPath.name,
-            country_code: providerPath.country_code,
-            description: providerPath.description,
-            logo_url: providerPath.logo_url,
-            info_url: providerPath.info_url,
-            wiki_url: providerPath.wiki_url,
-        })
-        await Provider.updateOne({ _id: provider.id }, provider, { upsert: true })
+        // Provider (Ex. SpaceX)
+        const providerData = launch.launch_service_provider
+        await Provider.updateOne(
+            { _id: providerData.id },
+            {
+                _id: providerData.id,
+                name: providerData.name,
+                country_code: providerData.country_code,
+                description: providerData.description,
+                logo_url: providerData.logo_url,
+                info_url: providerData.info_url,
+                wiki_url: providerData.wiki_url,
+            },
+            { upsert: true }
+        )
 
-        // Get video URL from vidURLs array if available
-        const watchUrl = launch.vidURLs && launch.vidURLs.length > 0 ? launch.vidURLs[0].url : null
-
-        const upcomingLaunch = new Launch({
-            _id: launch.id,
-            name: launch.name,
-            status: launch.status.id,
-            date: launch.net,
-            slug: launch.slug,
-            image_url: launch.image,
-            watch_url: watchUrl,
-            rocket: rocket._id,
-            mission: mission ? mission._id : null,
-            pad: pad._id,
-            provider: provider._id,
-        })
-        await Launch.updateOne({ _id: upcomingLaunch.id }, upcomingLaunch, { upsert: true })
+        // Launch
+        const watchUrl = launch.vidURLs?.length > 0 ? launch.vidURLs[0].url : null
+        await Launch.updateOne(
+            { _id: launch.id },
+            {
+                _id: launch.id,
+                name: launch.name,
+                status: launch.status.id,
+                date: launch.net,
+                slug: launch.slug,
+                image_url: launch.image,
+                watch_url: watchUrl,
+                rocket: rocketData.id,
+                mission: missionId,
+                pad: padData.id,
+                provider: providerData.id,
+            },
+            { upsert: true }
+        )
     }
+
     console.log("Launches sync complete!")
-    process.exit(0)
+    return launches.length
 }
 
-fetchUpcomingLaunches().then((launches) => insertUpcomingLaunches(launches.results))
+// Run if called directly
+if (require.main === module) {
+    (async () => {
+        try {
+            await connectDB()
+            await syncLaunches()
+            await disconnectDB()
+            process.exit(0)
+        } catch (error) {
+            console.error("Launches sync failed:", error.message)
+            process.exit(1)
+        }
+    })()
+}
+
+module.exports = { syncLaunches }

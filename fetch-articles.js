@@ -1,36 +1,64 @@
 require("dotenv/config")
-require("./db_connection")
-require("mongoose")
-const fetch = require("node-fetch")
+const { connectDB, disconnectDB } = require("./db_connection")
 const Article = require("./models/Article")
 
-async function fetch_articles() {
-    return await fetch(process.env.ARTICLES_LINK).then((res) => res.json())
+async function fetchArticles() {
+    if (!process.env.ARTICLES_LINK) {
+        throw new Error("Missing ARTICLES_LINK environment variable")
+    }
+
+    const response = await fetch(process.env.ARTICLES_LINK)
+
+    if (!response.ok) {
+        throw new Error(`API request failed: ${response.status} ${response.statusText}`)
+    }
+
+    return response.json()
 }
 
-async function insert_articles(articles) {
+async function syncArticles() {
+    const data = await fetchArticles()
+    const articles = data.results
+
     console.log(`Processing ${articles.length} articles...`)
 
-    for (var i = 0; i < articles.length; i++) {
-        const current_article = articles[i]
-        const article = new Article({
-            _id: current_article.id,
-            title: current_article.title,
-            url: current_article.url,
-            image_url: current_article.image_url,
-            news_site: current_article.news_site,
-            summary: current_article.summary,
-            published_date: current_article.published_at,
-            updated_date: current_article.updated_at,
-            featured: current_article.featured,
-            launches: current_article.launches,
-            events: current_article.events,
-        })
-        await Article.updateOne({ _id: current_article.id }, article, { upsert: true })
+    for (const article of articles) {
+        await Article.updateOne(
+            { _id: article.id },
+            {
+                _id: article.id,
+                title: article.title,
+                url: article.url,
+                image_url: article.image_url,
+                news_site: article.news_site,
+                summary: article.summary,
+                published_date: article.published_at,
+                updated_date: article.updated_at,
+                featured: article.featured,
+                launches: article.launches,
+                events: article.events,
+            },
+            { upsert: true }
+        )
     }
+
     console.log("Articles sync complete!")
-    process.exit(0)
+    return articles.length
 }
 
-// SNAPI v4 returns paginated response with results array
-fetch_articles().then((response) => insert_articles(response.results))
+// Run if called directly
+if (require.main === module) {
+    (async () => {
+        try {
+            await connectDB()
+            await syncArticles()
+            await disconnectDB()
+            process.exit(0)
+        } catch (error) {
+            console.error("Articles sync failed:", error.message)
+            process.exit(1)
+        }
+    })()
+}
+
+module.exports = { syncArticles }

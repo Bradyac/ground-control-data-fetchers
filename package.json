@@ -1,20 +1,24 @@
 {
     "name": "ground-control-fetcher",
-    "version": "1.0.0",
-    "description": "",
-    "main": "fetch-upcoming-launches.js",
+    "version": "2.0.0",
+    "description": "Fetches space launch and news data from external APIs into MongoDB",
+    "main": "sync.js",
     "scripts": {
-        "start": "node fetch-launches.js",
-        "dev": "nodemon fetch-launches.js"
+        "sync": "node sync.js",
+        "launches": "node fetch-launches.js",
+        "articles": "node fetch-articles.js",
+        "dev": "nodemon sync.js"
     },
-    "author": "",
+    "author": "Brady Cunningham",
     "license": "ISC",
     "dependencies": {
-        "dotenv": "^8.2.0",
-        "mongoose": "^5.12.3",
-        "node-fetch": "^2.6.1"
+        "dotenv": "^17.2.3",
+        "mongoose": "^9.1.1"
     },
     "devDependencies": {
-        "nodemon": "^2.0.7"
+        "nodemon": "^3.1.11"
+    },
+    "engines": {
+        "node": ">=18.0.0"
     }
 }
