@@ -11,9 +11,7 @@ async function connectDB() {
             serverSelectionTimeoutMS: 10000,
             connectTimeoutMS: 10000,
         })
-        // Log sanitized connection info (hide credentials)
-        const { host, name } = mongoose.connection
-        console.log(`[Database] Connected to MongoDB (host: ${host}, database: ${name})`)
+        console.log("[Database] Connected to MongoDB")
     } catch (error) {
         const message = error.message || "Unknown connection error"
         // Provide actionable error context
