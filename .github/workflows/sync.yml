@@ -6,6 +6,9 @@ on:
     - cron: '0 8,20 * * *'
   workflow_dispatch:
     # Allows manual trigger from GitHub Actions tab
+  push:
+    branches:
+      - claude/improve-action-error-messages-8jMee
 
 jobs:
   sync:
