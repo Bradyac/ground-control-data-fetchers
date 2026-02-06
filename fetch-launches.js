@@ -12,13 +12,12 @@ async function fetchUpcomingLaunches() {
     }
 
     const url = process.env.LAUNCHES_LINK
-    console.log(`[Launches API] Fetching from: ${url}`)
 
     let response
     try {
         response = await fetch(url)
     } catch (error) {
-        throw new Error(`[Launches API] Network error - failed to reach API.\nURL: ${url}\nDetails: ${error.message}`)
+        throw new Error(`[Launches API] Network error - failed to reach API.\nDetails: ${error.message}`)
     }
 
     if (!response.ok) {
@@ -28,13 +27,13 @@ async function fetchUpcomingLaunches() {
         } catch {
             errorBody = "(unable to read response body)"
         }
-        throw new Error(`[Launches API] Request failed with status ${response.status} ${response.statusText}\nURL: ${url}\nResponse: ${errorBody.slice(0, 500)}`)
+        throw new Error(`[Launches API] Request failed with status ${response.status} ${response.statusText}\nResponse: ${errorBody.slice(0, 500)}`)
     }
 
     try {
         return await response.json()
     } catch (error) {
-        throw new Error(`[Launches API] Failed to parse JSON response.\nURL: ${url}\nDetails: ${error.message}`)
+        throw new Error(`[Launches API] Failed to parse JSON response.\nDetails: ${error.message}`)
     }
 }
 
