@@ -2,8 +2,9 @@ name: Daily Sync
 
 on:
   schedule:
-    # Runs twice daily at 8:00 AM and 8:00 PM UTC
-    - cron: '0 8,20 * * *'
+    # Runs twice daily at 8:07 AM and 8:07 PM UTC
+    # Avoid the start-of-hour peak when scheduled runs can be delayed or dropped.
+    - cron: '7 8,20 * * *'
   workflow_dispatch:
     # Allows manual trigger from GitHub Actions tab
 
@@ -13,10 +14,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: 'npm'
